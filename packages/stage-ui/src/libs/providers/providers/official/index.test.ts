@@ -1,8 +1,11 @@
 import type { SpeechProviderWithExtraOptions } from '@xsai-ext/providers/utils'
+import type { ComposerTranslation } from 'vue-i18n'
 
 import { describe, expect, it } from 'vitest'
 
 import { OFFICIAL_TRANSCRIPTION_PROVIDER_ID, providerOfficialSpeech, providerOfficialSpeechStreaming, providerOfficialTranscription } from './index'
+
+const translate = ((key: string) => key) as unknown as ComposerTranslation
 
 interface OfficialSpeechOptions {
   speed?: number
@@ -98,7 +101,7 @@ describe('official transcription provider', () => {
    * providerOfficialTranscription.extraMethods.listModels()
    */
   it('lists the auto realtime model without calling a provider credential flow', async () => {
-    const models = await providerOfficialTranscription.extraMethods?.listModels?.({}, providerOfficialTranscription.createProvider({}))
+    const models = await providerOfficialTranscription.extraMethods?.listModels?.({}, providerOfficialTranscription.createProvider({}), { t: translate })
 
     expect(models).toEqual([
       {

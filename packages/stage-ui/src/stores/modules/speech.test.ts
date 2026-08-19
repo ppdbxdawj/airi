@@ -1,3 +1,5 @@
+import type { ComposerTranslation } from 'vue-i18n'
+
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
@@ -17,6 +19,8 @@ vi.mock('vue-i18n', () => ({
     t: (_key: string, fallback?: string) => fallback ?? _key,
   }),
 }))
+
+const translate = ((key: string) => key) as unknown as ComposerTranslation
 
 describe('speech store helpers', () => {
   beforeEach(() => {
@@ -284,6 +288,7 @@ describe('speech store helpers', () => {
       providersStore.providerRuntimeState[OFFICIAL_SPEECH_PROVIDER_ID].models = await providerOfficialSpeech.extraMethods!.listModels!(
         {},
         providerOfficialSpeech.createProvider({}),
+        { t: translate },
       )
 
       speechStore.ensureActiveSpeechModel()
@@ -343,6 +348,7 @@ describe('speech store helpers', () => {
       providersStore.providerRuntimeState[OFFICIAL_SPEECH_PROVIDER_ID].models = await providerOfficialSpeech.extraMethods!.listModels!(
         {},
         providerOfficialSpeech.createProvider({}),
+        { t: translate },
       )
 
       speechStore.ensureActiveSpeechModel()
@@ -401,6 +407,7 @@ describe('speech store helpers', () => {
       providersStore.providerRuntimeState[OFFICIAL_SPEECH_PROVIDER_ID].models = await providerOfficialSpeech.extraMethods!.listModels!(
         {},
         providerOfficialSpeech.createProvider({}),
+        { t: translate },
       )
 
       speechStore.ensureActiveSpeechModel()

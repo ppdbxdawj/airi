@@ -1,3 +1,5 @@
+import type { ComposerTranslation } from 'vue-i18n'
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const createOpenAIMock = vi.fn((apiKey: string, baseURL: string) => ({
@@ -13,6 +15,11 @@ const createOpenAIMock = vi.fn((apiKey: string, baseURL: string) => ({
 vi.mock('@xsai-ext/providers/create', () => ({
   createOpenAI: createOpenAIMock,
 }))
+
+const englishT = ((key: string) => ({
+  'settings.pages.providers.provider.volcengine-coding-plan.models.ark-code-latest.description': 'Uses the model selected in the Coding Plan console, including Auto. Changes apply in 3–5 minutes.',
+  'settings.pages.providers.provider.volcengine-coding-plan.models.legacy.description': 'Legacy Coding Plan model scheduled for retirement. Switch to a currently supported model.',
+})[key] ?? key) as unknown as ComposerTranslation
 
 describe('ark chat provider definitions', () => {
   beforeEach(() => {
@@ -38,7 +45,7 @@ describe('ark chat provider definitions', () => {
     const chatConfig = providerInstance.chat('volcengine-coding-plan/doubao-seed-2.1-turbo')
     expect(chatConfig.model).toBe('doubao-seed-2.1-turbo')
 
-    const listedModels = await provider!.extraMethods!.listModels!(parsedConfig, providerInstance)
+    const listedModels = await provider!.extraMethods!.listModels!(parsedConfig, providerInstance, { t: englishT })
     expect(listedModels.map(model => model.id)).toEqual([
       'volcengine-coding-plan/ark-code-latest',
       'volcengine-coding-plan/doubao-seed-2.1-turbo',
@@ -53,7 +60,7 @@ describe('ark chat provider definitions', () => {
     ])
 
     expect(listedModels[0]).toEqual({
-      description: 'Uses the model selected in the Coding Plan console, including Auto; changes apply in 3–5 minutes.',
+      description: 'Uses the model selected in the Coding Plan console, including Auto. Changes apply in 3–5 minutes.',
       id: 'volcengine-coding-plan/ark-code-latest',
       name: 'ark-code-latest',
       provider: 'volcengine-coding-plan',
@@ -78,6 +85,31 @@ describe('ark chat provider definitions', () => {
     ])
   })
 
+  // https://github.com/moeru-ai/airi/pull/2321#discussion_r3810499979
+  it('localizes Volcengine model descriptions for the PR #2321 review', async () => {
+    const { getDefinedProvider } = await import('./registry')
+    await import('./volcengine-coding-plan')
+
+    const provider = getDefinedProvider('volcengine-coding-plan')
+    expect(provider).toBeDefined()
+
+    const schema = provider!.createProviderConfig({ t: input => input }) as any
+    const config = schema.parse({ apiKey: 'test-key' })
+    const providerInstance = provider!.createProvider(config)
+    const t = vi.fn((key: string) => ({
+      'settings.pages.providers.provider.volcengine-coding-plan.models.ark-code-latest.description': 'Localized alias description',
+      'settings.pages.providers.provider.volcengine-coding-plan.models.legacy.description': 'Localized legacy description',
+    })[key] ?? key) as unknown as ComposerTranslation
+
+    const models = await provider!.extraMethods!.listModels!(config, providerInstance, { t })
+
+    expect(models[0].description).toBe('Localized alias description')
+    expect(models.slice(-2).map(model => model.description)).toEqual([
+      'Localized legacy description',
+      'Localized legacy description',
+    ])
+  })
+
   it('registers byteplus providers with the spec base urls', async () => {
     const { getDefinedProvider } = await import('./registry')
     await import('./byteplus')
@@ -95,8 +127,8 @@ describe('ark chat provider definitions', () => {
     expect(byteplusConfig.baseUrl).toBe('https://ark.ap-southeast.bytepluses.com/api/v3')
     expect(byteplusCodingPlanConfig.baseUrl).toBe('https://ark.ap-southeast.bytepluses.com/api/coding/v3')
 
-    const byteplusModels = await byteplus!.extraMethods!.listModels!(byteplusConfig, byteplus!.createProvider(byteplusConfig))
-    const byteplusCodingPlanModels = await byteplusCodingPlan!.extraMethods!.listModels!(byteplusCodingPlanConfig, byteplusCodingPlan!.createProvider(byteplusCodingPlanConfig))
+    const byteplusModels = await byteplus!.extraMethods!.listModels!(byteplusConfig, byteplus!.createProvider(byteplusConfig), { t: englishT })
+    const byteplusCodingPlanModels = await byteplusCodingPlan!.extraMethods!.listModels!(byteplusCodingPlanConfig, byteplusCodingPlan!.createProvider(byteplusCodingPlanConfig), { t: englishT })
 
     expect(byteplusModels.map(model => model.id)).toEqual([
       'byteplus/seed-2-0-pro-260328',

@@ -1,6 +1,10 @@
+import type { ComposerTranslation } from 'vue-i18n'
+
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { providerAmazonBedrock } from './index'
+
+const translate = ((key: string) => key) as unknown as ComposerTranslation
 
 describe('providerAmazonBedrock', () => {
   afterEach(() => {
@@ -58,7 +62,7 @@ describe('providerAmazonBedrock', () => {
     }, providerAmazonBedrock.createProvider({
       apiKey: 'invalid-key',
       region: 'us-east-1',
-    }))
+    }), { t: translate })
     expect(models).toBeDefined()
     expect(models!.length).toBeGreaterThan(0)
     expect(models!.some(m => m.id.includes('nova'))).toBe(true)

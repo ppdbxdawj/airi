@@ -1,3 +1,5 @@
+import type { ComposerTranslation } from 'vue-i18n'
+
 import type { ProviderDefinition, ProviderExtraMethods, ProviderInstance } from '../types'
 
 import isNetworkError from 'is-network-error'
@@ -73,9 +75,10 @@ async function resolveModels<TConfig extends { apiKey?: string | null, baseUrl?:
   config: TConfig,
   provider: ProviderInstance,
   providerExtra: ProviderExtraMethods<TConfig> | undefined,
+  contextOptions: { t: ComposerTranslation },
 ) {
   if (providerExtra?.listModels) {
-    return providerExtra.listModels(config, provider)
+    return providerExtra.listModels(config, provider, contextOptions)
   }
   if (!isModelProvider(provider)) {
     return listModels({ baseURL: config.baseUrl!, apiKey: config.apiKey! })
@@ -88,9 +91,10 @@ async function pickValidationModel<TConfig extends { apiKey?: string | null, bas
   config: TConfig,
   provider: ProviderInstance,
   providerExtra: ProviderExtraMethods<TConfig> | undefined,
+  contextOptions: { t: ComposerTranslation },
 ): Promise<string | null> {
   try {
-    const models = await resolveModels(config, provider, providerExtra)
+    const models = await resolveModels(config, provider, providerExtra, contextOptions)
     const modelId = extractModelId(models.find(model => !shouldSkipModelId(extractModelId(model))))
     return modelId || null
   }
@@ -117,8 +121,9 @@ export function createOpenAICompatibleValidators<TConfig extends { apiKey?: stri
     config: TConfig,
     provider: ProviderInstance,
     providerExtra: ProviderExtraMethods<TConfig> | undefined,
+    contextOptions: { t: ComposerTranslation },
   ): Promise<ChatCheckResult> {
-    const model = await pickValidationModel(config, provider, providerExtra)
+    const model = await pickValidationModel(config, provider, providerExtra, contextOptions)
     const normalizedModel = model ? options?.normalizeModelId?.(model) ?? model : model
 
     if (!normalizedModel) {
@@ -162,15 +167,15 @@ export function createOpenAICompatibleValidators<TConfig extends { apiKey?: stri
     config: TConfig,
     provider: ProviderInstance,
     providerExtra: ProviderExtraMethods<TConfig> | undefined,
-    contextOptions?: { validationCache?: Map<string, unknown> },
+    contextOptions: { t: ComposerTranslation, validationCache?: Map<string, unknown> },
   ): Promise<ChatCheckResult> => {
-    const cache = contextOptions?.validationCache
+    const cache = contextOptions.validationCache
     const existing = cache?.get(chatCheckCacheKey) as Promise<ChatCheckResult> | undefined
     if (existing)
       return existing
 
     if (!cache) {
-      return runChatCheck(config, provider, providerExtra)
+      return runChatCheck(config, provider, providerExtra, contextOptions)
     }
 
     let mutex = cache.get(chatCheckMutexKey) as Mutex | undefined
@@ -186,7 +191,7 @@ export function createOpenAICompatibleValidators<TConfig extends { apiKey?: stri
       if (cached)
         return cached
 
-      const sharedCheck = runChatCheck(config, provider, providerExtra)
+      const sharedCheck = runChatCheck(config, provider, providerExtra, contextOptions)
 
       cache.set(chatCheckCacheKey, sharedCheck)
 
@@ -297,7 +302,10 @@ export function createOpenAICompatibleValidators<TConfig extends { apiKey?: stri
           config,
           provider,
           providerExtra,
-          contextOptions as { validationCache?: Map<string, unknown> } | undefined,
+          {
+            t,
+            validationCache: (contextOptions as { validationCache?: Map<string, unknown> } | undefined)?.validationCache,
+          },
         )
         if (!result.chatOk) {
           errors.push({ error: new Error(`Chat completions check failed: ${result.errorMessage || 'Unknown error.'}`) })
@@ -321,7 +329,7 @@ export function createOpenAICompatibleValidators<TConfig extends { apiKey?: stri
       validator: async (config, provider, providerExtra) => {
         const errors: Array<{ error: unknown }> = []
         try {
-          const models = await resolveModels(config, provider, providerExtra)
+          const models = await resolveModels(config, provider, providerExtra, { t })
           if (!models || models.length === 0) {
             errors.push({ error: new Error('Model list check failed: no models found') })
           }

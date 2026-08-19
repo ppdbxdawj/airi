@@ -107,7 +107,7 @@ describe('migrated provider definitions', () => {
 
   it('keeps ElevenLabs configuration and model discovery in the definition', async () => {
     const defaults = z.parse(providerElevenLabs.createProviderConfig({ t: translate }), { apiKey: 'test' })
-    const models = await providerElevenLabs.extraMethods?.listModels?.(defaults, providerElevenLabs.createProvider(defaults))
+    const models = await providerElevenLabs.extraMethods?.listModels?.(defaults, providerElevenLabs.createProvider(defaults), { t: translate })
 
     expect(defaults).toMatchObject({
       baseUrl: 'https://unspeech.hyp3r.link/v1/',
