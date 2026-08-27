@@ -4,7 +4,6 @@ import { useElectronEventaContext, useElectronEventaInvoke, useElectronMouseInEl
 import { IS_DEV } from '@proj-airi/stage-shared'
 import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
 import { useTheme } from '@proj-airi/ui'
-import { refDebounced, useIntervalFn } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, reactive, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -28,6 +27,7 @@ import {
   electronStartDraggingWindow,
   electronWindowSetAlwaysOnTop,
 } from '../../../../shared/eventa'
+import { useControlsIslandAutoCollapse } from './use-controls-island-auto-collapse'
 import { useControlsIslandPlacement } from './use-controls-island-placement'
 
 interface Emits {
@@ -76,13 +76,27 @@ defineExpose({
   set hearingDialogOpen(v: boolean) { setOverlay('hearing', v) },
 })
 
-const { isOutside } = useElectronMouseInElement(islandElement)
-const isOutsideAfter2seconds = refDebounced(isOutside, 1500)
+const {
+  elementHeight,
+  elementPositionX,
+  elementPositionY,
+  elementWidth,
+  x,
+  y,
+} = useElectronMouseInElement(islandElement)
 
-watch(isOutsideAfter2seconds, (outside) => {
-  if (outside && expanded.value && !isBlocked.value) {
+useControlsIslandAutoCollapse({
+  blocked: isBlocked,
+  elementHeight,
+  elementPositionX,
+  elementPositionY,
+  elementWidth,
+  expanded,
+  onCollapse: () => {
     expanded.value = false
-  }
+  },
+  x,
+  y,
 })
 
 watch(expanded, (isExpanded) => {
@@ -94,12 +108,6 @@ watch(expanded, (isExpanded) => {
 watch([expanded, isBlocked], ([isExpanded, isInteractionBlocked]) => {
   emit('interactionChange', isExpanded || isInteractionBlocked)
 }, { immediate: true })
-
-useIntervalFn(() => {
-  if (expanded.value && isOutside.value && !isBlocked.value) {
-    expanded.value = false
-  }
-}, 1500)
 
 // Apply alwaysOnTop on mount and when it changes
 watch(alwaysOnTop, (val) => {
