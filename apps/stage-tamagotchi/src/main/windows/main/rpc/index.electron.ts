@@ -53,7 +53,7 @@ export async function setupMainWindowElectronInvokes(params: {
   createMcpServersService({ context, manager: params.mcpStdioManager })
   createGodotStageService({ context, manager: params.godotStageManager, window: params.window })
   createOnboardingService({ context, onboardingWindowManager: params.onboardingWindowManager, mainWindow: params.window })
-  createAuthService({ context, window: params.window })
+  createAuthService({ context, role: 'primary', window: params.window })
 
   defineInvokeHandler(context, electronCenterMainWindow, () => centerWindowOnDisplay(params.window))
   defineInvokeHandler(context, electronOpenMainDevtools, () => params.window.webContents.openDevTools({ mode: 'detach' }))

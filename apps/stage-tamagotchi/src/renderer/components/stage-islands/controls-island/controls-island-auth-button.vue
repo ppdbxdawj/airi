@@ -7,6 +7,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import {
+  electronAuthAttemptSettled,
   electronAuthCallback,
   electronAuthCallbackError,
   electronAuthStartLogin,
@@ -27,6 +28,13 @@ const startSigningIn = useElectronEventaInvoke(electronAuthStartLogin)
 const openSettings = useElectronEventaInvoke(electronOpenSettings)
 
 const signingIn = ref(false)
+let signingInGeneration = 0
+interface PendingSigningIn {
+  generation: number
+  attemptId?: number
+  terminalAttemptIds: Set<number>
+}
+let pendingSigningIn: PendingSigningIn | undefined
 
 const userName = computed(() => user.value?.name)
 const userAvatar = computed(() => user.value?.image)
@@ -36,36 +44,95 @@ function handleClick() {
     openSettings({ route: '/settings/account' })
   }
   else {
-    doSigningIn()
+    void doSigningIn()
   }
 }
 
-function doSigningIn() {
+async function doSigningIn() {
+  if (signingIn.value)
+    return
+
+  const generation = ++signingInGeneration
+  const pending: PendingSigningIn = {
+    generation,
+    terminalAttemptIds: new Set(),
+  }
+  pendingSigningIn = pending
   signingIn.value = true
-  startSigningIn()
+  try {
+    const attempt = await startSigningIn()
+
+    if (pendingSigningIn !== pending || signingInGeneration !== generation)
+      return
+
+    if (!attempt || typeof attempt.attemptId !== 'number') {
+      pendingSigningIn = undefined
+      signingIn.value = false
+      return
+    }
+
+    pending.attemptId = attempt.attemptId
+    if (pending.terminalAttemptIds.has(attempt.attemptId)) {
+      pendingSigningIn = undefined
+      signingIn.value = false
+    }
+  }
+  catch {
+    if (pendingSigningIn === pending && pending.generation === generation) {
+      pendingSigningIn = undefined
+      signingIn.value = false
+    }
+  }
 }
 
-// Clear loading state on callback or error from main process.
-// No cleanup needed — this component lives for the window's lifetime.
-context.value.on(electronAuthCallback, () => {
-  signingIn.value = false
+function handleTerminalEvent(attemptId: number | undefined) {
+  if (typeof attemptId !== 'number')
+    return
+
+  const pending = pendingSigningIn
+  if (!pending)
+    return
+
+  if (pending.attemptId === undefined) {
+    // The terminal event can arrive before the start response. Store its ID
+    // until the response identifies the attempt that this component joined.
+    pending.terminalAttemptIds.add(attemptId)
+    return
+  }
+
+  if (pending.attemptId === attemptId) {
+    pendingSigningIn = undefined
+    signingIn.value = false
+  }
+}
+
+// Clear loading state only for the currently pending attempt. The terminal event
+// can arrive before the IPC start response, so store its ID until that response
+// identifies the attempt.
+context.value.on(electronAuthCallback, (event) => {
+  handleTerminalEvent(event.body?.attemptId)
 })
-context.value.on(electronAuthCallbackError, () => {
-  signingIn.value = false
+context.value.on(electronAuthCallbackError, (event) => {
+  handleTerminalEvent(event.body?.attemptId)
+})
+context.value.on(electronAuthAttemptSettled, (event) => {
+  handleTerminalEvent(event.body?.attemptId)
 })
 
 // React to needsLogin from other components (e.g. onboarding)
 watch(needsLogin, (val) => {
   if (val && !isAuthenticated.value) {
-    doSigningIn()
+    void doSigningIn()
     needsLogin.value = false
   }
 })
 
 // Clear loading when authenticated
 watch(isAuthenticated, (val) => {
-  if (val)
+  if (val) {
+    pendingSigningIn = undefined
     signingIn.value = false
+  }
 })
 </script>
 

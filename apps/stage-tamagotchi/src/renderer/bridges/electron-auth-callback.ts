@@ -17,7 +17,7 @@ export function initializeElectronAuthCallbackBridge() {
   const context = getElectronEventaContext()
 
   context.on(electronAuthCallback, async (event) => {
-    const tokens = event.body
+    const tokens = event.body?.tokens
     if (!tokens)
       return
 

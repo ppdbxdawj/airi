@@ -490,9 +490,20 @@ export interface ElectronAuthTokens {
   idToken?: string
   expiresIn: number
 }
-export const electronAuthStartLogin = defineInvokeEventa<void>('eventa:invoke:electron:auth:start-login')
-export const electronAuthCallback = defineEventa<ElectronAuthTokens>('eventa:event:electron:auth:callback')
-export const electronAuthCallbackError = defineEventa<{ error: string }>('eventa:event:electron:auth:callback-error')
+export interface ElectronAuthAttemptRef {
+  attemptId: number
+}
+export interface ElectronAuthCallbackPayload extends ElectronAuthAttemptRef {
+  tokens: ElectronAuthTokens
+}
+export interface ElectronAuthCallbackErrorPayload extends ElectronAuthAttemptRef {
+  error: string
+}
+export type ElectronAuthAttemptSettledPayload = ElectronAuthAttemptRef
+export const electronAuthStartLogin = defineInvokeEventa<ElectronAuthAttemptRef | undefined>('eventa:invoke:electron:auth:start-login')
+export const electronAuthCallback = defineEventa<ElectronAuthCallbackPayload>('eventa:event:electron:auth:callback')
+export const electronAuthCallbackError = defineEventa<ElectronAuthCallbackErrorPayload>('eventa:event:electron:auth:callback-error')
+export const electronAuthAttemptSettled = defineEventa<ElectronAuthAttemptSettledPayload>('eventa:event:electron:auth:attempt-settled')
 export const electronAuthLogout = defineInvokeEventa<void>('eventa:invoke:electron:auth:logout')
 
 export const i18nSetLocale = defineInvokeEventa<void, Locale>('eventa:invoke:electron:i18n:set-locale')

@@ -52,10 +52,13 @@ describe('electron auth callback bridge', () => {
 
     await handler?.({
       body: {
-        accessToken: 'new-access-token',
-        refreshToken: 'new-refresh-token',
-        idToken: 'new-id-token',
-        expiresIn: 3600,
+        attemptId: 7,
+        tokens: {
+          accessToken: 'new-access-token',
+          refreshToken: 'new-refresh-token',
+          idToken: 'new-id-token',
+          expiresIn: 3600,
+        },
       },
     })
 
